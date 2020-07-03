@@ -14,16 +14,32 @@ fn roll_dice( n:usize ) -> Vec<usize>{
     vec
 }
 
-fn evaluate_dice( all_dice: &Vec<usize>) -> (usize, usize) {
+fn print_dice( all_dice: &Vec<usize>) {
+    for dice in all_dice{
+        print!("{} ", *dice);
+    }
+
+    println!("");
+}
+
+
+struct DiceAnalysis {
+    total: usize,
+    used_dice: usize,
+    five_count: usize,
+    two_count: usize
+
+}
+
+fn evaluate_dice( all_dice: &Vec<usize>) -> DiceAnalysis {
     
     
     // The counts run to 7 (0..6) because it's very confusing to 
     // keep adjusting for the off by one errors... skips 0 and let the the 1 dice goes in slot 1. The six count in slot 6.
     let mut face_counts: [ usize; 7] = [0; 7];
     let mut type_count: [ usize; 7] = [0; 7];
-    let mut total:usize = 0;
 
-    let mut used_dice:usize = 0;
+    let mut da = DiceAnalysis{ total:0, used_dice:0, five_count:0, two_count:0 };
 
     for dice in all_dice{
         face_counts[*dice] = face_counts[*dice]+1;
@@ -48,16 +64,16 @@ fn evaluate_dice( all_dice: &Vec<usize>) -> (usize, usize) {
 
     if type_count[6] == 1 {
         // six of a kind is 3 pairs
-        used_dice += 6;
-        total = 1500;
+        da.used_dice += 6;
+        da.total = 1500;
     } else if type_count[4] == 1 && type_count[2]==1 {
         // 4 of a kind and a pair is 3 pairs. 
-        total = 1500;
-        used_dice +=6;
+        da.total = 1500;
+        da.used_dice +=6;
     } else if type_count[2] == 3 {
         // 3 pairs
-        total = 1500;
-        used_dice +=6;
+        da.total = 1500;
+        da.used_dice +=6;
     } else if type_count[6] == 1 {
         
     }
@@ -74,42 +90,42 @@ fn evaluate_dice( all_dice: &Vec<usize>) -> (usize, usize) {
             match face {
 
                 1 => {
-                    used_dice += face_count;
+                    da.used_dice += face_count;
                     if face_count >= 3 {
-                        total += 1000;
+                        da.total += 1000;
                         face_count -= 3;
                     
                     }
 
                     if face_count > 0 {
-                        total += face_count*100;
+                        da.total += face_count*100;
                     }
-
+                
                 },
                 5 => {
-                    used_dice += face_count;
+                    da.used_dice += face_count;
                     if face_count >= 3 {
-                        total += 500;
+                        da.total += 500;
                         face_count -= 3;
                     
                     }
 
                     if face_count > 0 {
-                        total += face_count*50;
+                        da.total += face_count*50;
                     }
 
                 },
 
                 _ => {
                     if face_count >= 3 {
-                        total += face * 100;
+                        da.total += face * 100;
                         face_count -= 3;
-                        used_dice += 3;
+                        da.used_dice += 3;
                     }
 
                     if face_count >= 3 {
-                        total += face * 100;
-                        used_dice += 3;
+                        da.total += face * 100;
+                        da.used_dice += 3;
                     }
                 }
                
@@ -121,12 +137,15 @@ fn evaluate_dice( all_dice: &Vec<usize>) -> (usize, usize) {
         }
     }
 
-    (total, used_dice)
+    da.five_count = face_counts[5];
+    da.two_count = face_counts[2];
+
+    return da;
 }
 
 // This function keeps rolling dize until a zero is rolled
 
-fn play_hand( soft_stop:usize) -> usize {
+fn play_hand( soft_stop:usize, skip_fives:usize ) -> usize {
     let mut run_total = 0;
     let mut num_dice = 6;
     let mut _run_count = 0;
@@ -134,19 +153,63 @@ fn play_hand( soft_stop:usize) -> usize {
     loop{
 
         let dice = roll_dice( num_dice );
-        let (run_last_total, used_dice ) = evaluate_dice( &dice );
+        //print_dice( &dice );
+        let mut da = evaluate_dice( &dice );
 
-        run_total += run_last_total;
+        // If we are rolled 3, 4 5 or 6 dice and two fives are returned then...
+        // pull 1 five out and roll with it, or...
+        // pull all fives out if we scored on something else
+        //if( run_last_total == 100 && five_count == 2)
+        //{
+        //    run_last_total = 50;
+        //    used_dice = 1;
+        //}
+        //else 
+        //{
+        //
+        //}
+        //
+        //
+
+        if skip_fives > 0 {
+            // We are testing the theory that its a good thing to have more dice to role. As such
+            // we should omit counting fives when we have a chance. 
+            // Cases...
+            // 1. Rolled two fives. In which case, only keep one five.
+            // 2. Rolled something else and one or two fives. In which case keep the something
+            //    else.
+            // 3. Rolled 4 or 5 fives. In which case keep 3 fives.
+            //
+            //
+            //
+            //
+
+            while da.total >= 100 && da.five_count > 0 && da.five_count < 3 {
+                da.five_count -= 1;
+                da.used_dice -= 1;
+                da.total -= 50;
+            }
+        }
+
+        num_dice -= da.used_dice;
+        run_total += da.total;
 
         _run_count += 1;
 
         // de we go bust?
-        if run_last_total == 0 {
+        if da.total == 0 {
             run_total = 0;
             break;
         }
 
-        num_dice -= used_dice;
+        // If we are rolled 3, 4 5 or 6 dice and two fives are returned then...
+        // pull 1 five out and roll with it, or...
+        // pull all fives out if we scored on something else
+        //if( num_dice > 2 && five_count == 2 && used_dice == 2 )
+        //{
+        //    
+        //}
+
 
         if num_dice == 3 && run_total >= soft_stop{
             break;
@@ -162,7 +225,7 @@ fn play_hand( soft_stop:usize) -> usize {
 
     }
 
-    //println!("{} {}", run_total, run_count );
+    //println!("run total {} ", run_total );
 
     run_total
 
@@ -174,6 +237,7 @@ fn main() {
     let mut times = 1;
     let mut num_dice:usize = 6;
     let mut soft_stop:usize = 0;
+    let mut skip_fives:usize = 0;
     if args.len() >= 2 {
 
         times = args[1].parse::<usize>().unwrap();
@@ -187,12 +251,16 @@ fn main() {
         soft_stop = args[3].parse::<usize>().unwrap();
     }
 
+    if args.len() >= 5 {
+        skip_fives = args[4].parse::<usize>().unwrap();
+    }
+
     // println!("{:?}", args);
 
     if soft_stop > 0 {
         let mut total: usize = 0;
         for _ in 0..times{
-            total += play_hand(soft_stop);
+            total += play_hand(soft_stop, skip_fives);
         }
 
         let average = total/times;
@@ -208,9 +276,9 @@ fn main() {
 
             // println!("");
 
-            let (total, all) = evaluate_dice( &dice );
+            let da = evaluate_dice( &dice );
 
-            println!("{}, {}", total, all);
+            println!("{}, {}", da.total, da.used_dice);
         }
     }
 }
