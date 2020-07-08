@@ -1,6 +1,16 @@
 use std::env;
+mod player;
+mod game;
+
 extern crate rand;
+extern crate yaml_rust;
+
+use yaml_rust::{YamlLoader, YamlEmitter};
 use rand::Rng;
+
+
+
+
 
 fn roll_dice( n:usize ) -> Vec<usize>{
 
@@ -153,7 +163,7 @@ fn play_hand( soft_stop:usize, skip_fives:usize ) -> usize {
     loop{
 
         let dice = roll_dice( num_dice );
-        //print_dice( &dice );
+        print_dice( &dice );
         let mut da = evaluate_dice( &dice );
 
         // If we are rolled 3, 4 5 or 6 dice and two fives are returned then...
@@ -225,7 +235,7 @@ fn play_hand( soft_stop:usize, skip_fives:usize ) -> usize {
 
     }
 
-    //println!("run total {} ", run_total );
+    println!("run total {} ", run_total );
 
     run_total
 
@@ -256,6 +266,7 @@ fn main() {
     }
 
     // println!("{:?}", args);
+    let p = game:build_game();
 
     if soft_stop > 0 {
         let mut total: usize = 0;
