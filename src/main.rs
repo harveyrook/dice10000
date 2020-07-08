@@ -1,11 +1,10 @@
 use std::env;
-mod player;
 mod game;
 
 extern crate rand;
 extern crate yaml_rust;
 
-use yaml_rust::{YamlLoader, YamlEmitter};
+//use yaml_rust::{YamlLoader, YamlEmitter};
 use rand::Rng;
 
 
@@ -266,7 +265,7 @@ fn main() {
     }
 
     // println!("{:?}", args);
-    let p = game:build_game();
+    let _p = game::build_game();
 
     if soft_stop > 0 {
         let mut total: usize = 0;
