@@ -1,0 +1,7 @@
+Config:
+        tracing: low
+
+player:
+        ID:1
+        soft_limit:350
+
