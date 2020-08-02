@@ -1,45 +1,39 @@
-extern crate rand;
-extern crate yaml_rust;
-
-use yaml_rust::{YamlLoader};
 use rand::distributions::{Distribution, Uniform};
 use std::fs::File;
-use std::io::prelude::*;
-use std::io;
 
-enum MyError {
-        FileReadError
-}
+use serde::{Serialize, Deserialize};
 
-impl From<io::Error> for MyError {
-        fn from(e: io::Error) -> MyError {
-            MyError::FileReadError
-        }
-}
-
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Settings{
-    print_details:bool,
+    write_details:bool,
+    iterations:usize,
 }
 
-fn load_settings() -> Result<Settings,MyError>{
-
-    println!("loading settings");
-    let mut file = File::open("dice1000.yaml")?;
-    println!("about to load file");
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)?;
-    println!("read_to_string");
-    let docs = YamlLoader::load_from_str(&contents).unwrap();
-    println!("Docs... {:?}", docs);
-
-    let s = Settings{
-        print_details: false,
-    };
-
-    Ok(s)
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+pub struct PlayerConfig{
+    id:usize,
+    soft_limit:usize,
+    skip_fives:usize,
 }
 
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct AllSettings{
+    config: Settings,
+    players: Vec<PlayerConfig>,
+}
 
+static TRACE_ON: bool = false;
+
+fn load_settings(config_file: &str) -> AllSettings{
+    let file = File::open(config_file).unwrap();
+    let all_settings: AllSettings = serde_yaml::from_reader(&file).unwrap();
+
+    //unsafe{
+    //    TRACE_ON = all_settings.config.write_details;
+    //}
+
+    all_settings
+}
 
 fn roll_dice( n:usize ) -> Vec<usize>{
 
@@ -52,43 +46,93 @@ fn roll_dice( n:usize ) -> Vec<usize>{
 
 fn print_dice( all_dice: &Vec<usize>) {
     for dice in all_dice{
-        print!("{} ", *dice);
+        if TRACE_ON  {print!("{} ", *dice)};
     }
 
-    println!("");
+    if TRACE_ON {println!("")};
 }
 
 
 pub struct Dice10000
 {
+    config: Settings,
     player: Vec<Player>,
 
 }
 
-pub fn build_game() -> Dice10000{
-    load_settings();
+pub fn build_game(config_file: &str) -> Dice10000{
+    let all_settings = load_settings(config_file);
     let mut p: Vec<Player> = Vec::new();
-    p.push(build_player(1));
-    p.push(build_player(2));
-    p.push(build_player(3));
+    for player_config in &all_settings.players{
+        p.push(build_player(player_config));
+    }
 
-    let d = Dice10000{ player: p};
+    let d = Dice10000{ config: all_settings.config, player: p};
 
     d
 }
 
 impl Dice10000 {
-    pub fn play(& mut self){
+
+    pub fn play_all_iterations(& mut self) {
+
+        let mut starter = self.player[0].player_config.id;
+
+        for _ in 0 .. self.config.iterations{
+            self.play(starter);
+
+            let mut id_winner = 0;
+            let mut score_winner = 0;
+            let mut id_loser = 0;
+            let mut score_loser = 10000;
+            for p in self.player.iter_mut(){
+                if score_winner < p.score {
+                    score_winner = p.score;
+                    id_winner = p.player_config.id;
+                }
+                if p.score < score_loser {
+                    score_loser = p.score;
+                    id_loser = p.player_config.id;
+                }
+
+                p.on_board = false;
+                p.score = 0;
+            }
+        
+            for p in self.player.iter_mut(){
+                if id_winner == p.player_config.id {
+                    p.life_time_wins = p.life_time_wins+1;
+                }
+            }
+
+            starter = id_loser;
+
+        }
+
+        for p in self.player.iter_mut(){
+            println!("Player {} won {} times", p.player_config.id, p.life_time_wins); 
+        }
+
+
+
+}
+
+    pub fn play(& mut self, mut starter:usize ){
         let mut keep_going = true;
         let mut remaining_times = self.player.len();
 
         while keep_going || remaining_times > 0 {
             for p in self.player.iter_mut() {
-                p.play_hand(300, 1);
-                println!("Player:{} score:{}", p.player_id, p.score);
+                if starter > 0 && p.player_config.id != starter{
+                    continue;
+                }
+                starter = 0;
+
+                p.play_hand(p.player_config.soft_limit, p.player_config.skip_fives);
+                if TRACE_ON {println!("Player:{} score:{}", p.player_config.id, p.score);}
                 if p.score >= 10000{
                     keep_going = false;
-                    println!("Player {} crossed 10000", p.player_id);
+                    if TRACE_ON {println!("Player {} crossed 10000", p.player_config.id);}
                 }
                 if !keep_going {
                     //println!("Remaining times {}", remaining_times);
@@ -103,18 +147,18 @@ impl Dice10000 {
 }
 
 pub struct Player {
-    player_id: usize,
+    player_config: PlayerConfig,
     on_board: bool,
     score: usize,
-    soft_limit: usize,
+    life_time_wins: usize,
 }
     
-pub fn build_player( id: usize ) -> Player {
+pub fn build_player( player_config_param: &PlayerConfig ) -> Player {
     Player {
-        player_id: id,
+        player_config: player_config_param.clone(),
         on_board: false,
         score: 0,
-        soft_limit: 300
+        life_time_wins: 0,
     }
 }
 
@@ -123,7 +167,6 @@ struct DiceAnalysis {
     used_dice: usize,
     five_count: usize,
     two_count: usize,
-
 }
 
 fn evaluate_dice( all_dice: &Vec<usize>) -> DiceAnalysis {
@@ -328,7 +371,7 @@ impl Player {
 
         }
 
-        println!("run total {} ", run_total );
+        if TRACE_ON {println!("run total {} ", run_total );}
         self.score += run_total;
         run_total
 

@@ -1,7 +1,16 @@
-Config:
-        tracing: low
-
-player:
-        ID:1
-        soft_limit:350
-
+config:
+    write_details: false
+    iterations: 1000000 
+players:
+ - id: 1
+   soft_limit: 300
+   skip_fives: 0
+ - id: 2 
+   soft_limit: 300
+   skip_fives: 1
+ - id: 3
+   soft_limit: 300
+   skip_fives: 1
+ - id: 4 
+   soft_limit: 300
+   skip_fives: 1

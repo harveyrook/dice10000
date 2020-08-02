@@ -1,18 +1,23 @@
+use std::env;
+
 mod game;
 
 extern crate rand;
-extern crate yaml_rust;
 
 fn main() {
-    //let args: Vec<String> = env::args().collect();
 
-    //let mut times = 1;
+    let args: Vec<String> = env::args().collect();
+    let config_file = "./dice10000.yaml"; 
     //let mut num_dice:usize = 6;
     //let mut soft_stop:usize = 0;
     //let mut skip_fives:usize = 0;
     //if args.len() >= 2 {
 
-    //    times = args[1].parse::<usize>().unwrap();
+    //println!("{:?}", args.len());
+
+    //if args.len() >= 2{
+    //    config_file = &args[1].parse::<String>().unwrap().clone();
+    //}
     //}
 
     //if args.len() >= 3 {
@@ -27,10 +32,11 @@ fn main() {
     //    skip_fives = args[4].parse::<usize>().unwrap();
     //}
 
-    let mut p = game::build_game();
-    p.play();
+    let mut p = game::build_game(&config_file);
+    p.play_all_iterations();
 
-    //if soft_stop > 0 {
+    //if soft_stop > 0 { 
+    //
     //    let mut total: usize = 0;
     //    for _ in 0..times{
     //        total += play_hand(soft_stop, skip_fives);
