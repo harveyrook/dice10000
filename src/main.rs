@@ -6,7 +6,7 @@ extern crate rand;
 
 fn main() {
 
-    let args: Vec<String> = env::args().collect();
+    let _args: Vec<String> = env::args().collect();
     let config_file = "./dice10000.yaml"; 
     //let mut num_dice:usize = 6;
     //let mut soft_stop:usize = 0;
@@ -16,7 +16,7 @@ fn main() {
     //println!("{:?}", args.len());
 
     //if args.len() >= 2{
-    //    config_file = &args[1].parse::<String>().unwrap().clone();
+    // let mut config_file = &args[1].parse::<String>().unwrap_or( "./dice10000.yaml".to_string());
     //}
     //}
 

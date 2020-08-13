@@ -1,16 +1,44 @@
 config:
-    write_details: false
-    iterations: 1000000 
+   write_details: true 
+   iterations: 1000000
 players:
  - id: 1
-   soft_limit: 300
-   skip_fives: 0
+   skip_fives: 1 
+   limits:
+      - 10000 
+      - 200
+      - 250
+      - 350
+      - 1000
+      - 2000
+      - 2000
  - id: 2 
-   soft_limit: 300
    skip_fives: 1
+   limits:
+      - 10000
+      - 200
+      - 250 
+      - 350 
+      - 1000
+      - 2000
+      - 2000
  - id: 3
-   soft_limit: 300
    skip_fives: 1
+   limits:
+      - 10000
+      - 200
+      - 250
+      - 350 
+      - 1500
+      - 2000
+      - 2000
  - id: 4 
-   soft_limit: 300
    skip_fives: 1
+   limits:
+      - 10000
+      - 200
+      - 250
+      - 350 
+      - 1500
+      - 2000
+      - 2000
