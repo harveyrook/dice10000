@@ -22,13 +22,13 @@ pub struct AllSettings {
     players: Vec<PlayerConfig>,
 }
 
-static mut TRACE_ON: bool = false;
+static TRACE_ON: bool = false;
 
 fn load_settings(config_file: &str) -> AllSettings {
     let file = File::open(config_file).unwrap();
     let all_settings: AllSettings = serde_yaml::from_reader(&file).unwrap();
 
-    TRACE_ON = all_settings.config.write_details;
+    //TRACE_ON = all_settings.config.write_details;
 
     all_settings
 }
@@ -299,10 +299,12 @@ impl Player {
                 //
                 //
 
-                while da.total >= 100 && da.five_count > 0 && da.five_count < 3 {
-                    da.five_count -= 1;
-                    da.used_dice -= 1;
-                    da.total -= 50;
+                if (num_dice - da.used_dice) >= 3 {
+                    while da.total >= 100 && da.five_count > 0 && da.five_count < 3 {
+                        da.five_count -= 1;
+                        da.used_dice -= 1;
+                        da.total -= 50;
+                    }
                 }
             }
 

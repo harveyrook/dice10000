@@ -1,12 +1,12 @@
 config:
    write_details: true 
-   iterations: 1000000
+   iterations: 10000
 players:
  - id: 1
    skip_fives: 1 
    limits:
       - 10000 
-      - 200
+      - 250
       - 250
       - 350
       - 1000
@@ -16,17 +16,17 @@ players:
    skip_fives: 1
    limits:
       - 10000
-      - 200
+      - 250
       - 250 
       - 350 
       - 1000
       - 2000
       - 2000
  - id: 3
-   skip_fives: 1
+   skip_fives: 0
    limits:
       - 10000
-      - 200
+      - 250
       - 250
       - 350 
       - 1500
@@ -36,7 +36,7 @@ players:
    skip_fives: 1
    limits:
       - 10000
-      - 200
+      - 250
       - 250
       - 350 
       - 1500
