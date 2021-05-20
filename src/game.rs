@@ -1,5 +1,7 @@
 use rand::distributions::{Distribution, Uniform};
 use std::fs::File;
+use std::rc::Rc;
+
 
 use serde::{Deserialize, Serialize};
 
@@ -61,8 +63,8 @@ pub struct Dice10000 {
 pub fn build_game(config_file: &str) -> Dice10000 {
     let all_settings = load_settings(config_file);
     let mut p: Vec<Player> = Vec::new();
-    for player_config in &all_settings.players {
-        p.push(build_player(&player_config));
+    for player_config in all_settings.players {
+        p.push(build_player(player_config));
     }
 
     let d = Dice10000 {
@@ -79,30 +81,34 @@ impl Dice10000 {
         for a in 0..self.config.iterations {
             self.play((a+2) % self.player.len());
 
-            let mut score_winner = 0;
-
             // Find the highest score
-            for p in self.player.iter_mut() {
-                if p.score > score_winner {
-                    score_winner = p.score;
-                }
-            }
+            let score_winner = self.player.iter().
+                map( |p| p.score ).
+                max().
+                unwrap();
+            //for p in self.player.iter_mut() {
+            //    if p.score > score_winner {
+            //        score_winner = p.score;
+            //    }
+            // }
 
             // Increase the lifetime score of every player who had that score
             // Ties are possbile
-            for p in self.player.iter_mut() {
-                if p.score == score_winner {
-                    p.life_time_wins = p.life_time_wins+1;
-                }
-            }
+            //for p in self.player.iter_mut() {
+            //    if p.score == score_winner {
+            //        p.life_time_wins = p.life_time_wins+1;
+            //    }
+            //}
 
 
             // Reset the status
-            for p in self.player.iter_mut() {
-                p.on_board = false;
-                p.score = 0;
+            //for p in self.player.iter_mut() {
+            //    p.on_board = false;
+            //    p.score = 0;
 
-            }
+            //}
+
+            self.player = self.player.iter().map( |p| update_player( p, score_winner )).collect();
 
         }
 
@@ -148,20 +154,35 @@ impl Dice10000 {
 }
 
 pub struct Player {
-    player_config: PlayerConfig,
+    player_config: Rc<PlayerConfig>,
     on_board: bool,
     score: usize,
     life_time_wins: usize,
 }
 
-pub fn build_player(player_config_param: &PlayerConfig) -> Player {
+pub fn build_player(player_config_param: PlayerConfig) -> Player {
     Player {
-        player_config: player_config_param.clone(),
+        player_config: Rc::new(player_config_param),
         on_board: false,
         score: 0,
         life_time_wins: 0,
     }
 }
+
+pub fn update_player( old_player: &Player, high_score: usize ) -> Player {
+
+    Player {
+        player_config: old_player.player_config.clone(),
+        on_board: false,
+        score: 0,
+        life_time_wins: if old_player.score == high_score {
+                            old_player.life_time_wins + 1
+                        } else {
+                            old_player.life_time_wins
+                        }
+    }        
+}
+
 
 struct DiceAnalysis {
     total: usize,
