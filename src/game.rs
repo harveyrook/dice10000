@@ -15,6 +15,7 @@ pub struct Settings {
 pub struct PlayerConfig {
     id: usize,
     skip_fives: usize,
+    skip_twos: usize,
     limits: [usize; 7],
 }
 
@@ -86,27 +87,6 @@ impl Dice10000 {
                 map( |p| p.score ).
                 max().
                 unwrap();
-            //for p in self.player.iter_mut() {
-            //    if p.score > score_winner {
-            //        score_winner = p.score;
-            //    }
-            // }
-
-            // Increase the lifetime score of every player who had that score
-            // Ties are possbile
-            //for p in self.player.iter_mut() {
-            //    if p.score == score_winner {
-            //        p.life_time_wins = p.life_time_wins+1;
-            //    }
-            //}
-
-
-            // Reset the status
-            //for p in self.player.iter_mut() {
-            //    p.on_board = false;
-            //    p.score = 0;
-
-            //}
 
             self.player = self.player.iter().map( |p| update_player( p, score_winner )).collect();
 
@@ -194,8 +174,8 @@ struct DiceAnalysis {
 fn evaluate_dice(all_dice: &Vec<usize>) -> DiceAnalysis {
     // The counts run to 7 (0..6) because it's very confusing to
     // keep adjusting for the off by one errors... skips 0 and let the the 1 dice goes in slot 1. The six count in slot 6.
-    let mut face_counts: [usize; 7] = [0; 7];
-    let mut type_count: [usize; 7] = [0; 7];
+
+    //print_dice( all_dice );
 
     let mut da = DiceAnalysis {
         total: 0,
@@ -204,14 +184,8 @@ fn evaluate_dice(all_dice: &Vec<usize>) -> DiceAnalysis {
         two_count: 0,
     };
 
-    for dice in all_dice {
-        face_counts[*dice] = face_counts[*dice] + 1;
-    }
-
-    for d in 0..7 {
-        let pos: usize = face_counts[d];
-        type_count[pos] += 1;
-    }
+    let face_counts = all_dice.iter().fold( [0; 7], | mut acc, x | { acc[*x] += 1; acc } );
+    let type_count = (0..7).fold( [0; 7], | mut acc, x | { acc[face_counts[x]] += 1 ; acc } ); 
 
     // Evaluations...
     // One of each... 1500
@@ -220,67 +194,45 @@ fn evaluate_dice(all_dice: &Vec<usize>) -> DiceAnalysis {
     // ones... 100 x #1's
     // five... 50 x #1's (4 5's is 550. 500 for the 3 5's and 50 for the 1 extra 5)
 
-    // for d in 0..6{
-    //     print!("{} ", type_count[d]);
-    // }
-    // println!("");
-
-    if type_count[6] == 1 {
-        // six of a kind is 3 pairs
+    if type_count[6] == 1 // six of a kind is 3 pairs
+        || type_count[4] == 1 && type_count[2] == 1  // 4 of a kind and a pair is 3 pairs.
+        || type_count[2] == 3 // 3 pairs
+        || type_count[6] == 1 // 1 of each face
+    {
         da.used_dice += 6;
         da.total = 1500;
-    } else if type_count[4] == 1 && type_count[2] == 1 {
-        // 4 of a kind and a pair is 3 pairs.
-        da.total = 1500;
-        da.used_dice += 6;
-    } else if type_count[2] == 3 {
-        // 3 pairs
-        da.total = 1500;
-        da.used_dice += 6;
-    } else if type_count[6] == 1 {
-        da.total = 1500;
-        da.used_dice += 6;
     } else {
         for face in 1..7 {
-            let mut face_count = face_counts[face];
 
             // print!("face_count {} face_counts {} total {} ", face_count, face_countss, total);
 
+            let regular_calc = | fcp, b, m, dr: & mut DiceAnalysis | {
+                let mut fc = fcp;
+
+                if fc>=3 && b>0 {
+                    dr.total += b;
+                    fc -= 3;
+                    dr.used_dice += 3;
+                }
+
+                if fc>0 && m>0{
+                    dr.total += m*fc;
+                    dr.used_dice += fc;
+                    //fc = 0;
+                }
+
+            };
+
+            let face_count = face_counts[face];
             match face {
                 1 => {
-                    da.used_dice += face_count;
-                    if face_count >= 3 {
-                        da.total += 1000;
-                        face_count -= 3;
-                    }
-
-                    if face_count > 0 {
-                        da.total += face_count * 100;
-                    }
+                    regular_calc( face_count, 1000, 100, &mut da);
                 }
                 5 => {
-                    da.used_dice += face_count;
-                    if face_count >= 3 {
-                        da.total += 500;
-                        face_count -= 3;
-                    }
-
-                    if face_count > 0 {
-                        da.total += face_count * 50;
-                    }
+                    regular_calc( face_count, 500, 50, &mut da);
                 }
-
                 _ => {
-                    if face_count >= 3 {
-                        da.total += face * 100;
-                        face_count -= 3;
-                        da.used_dice += 3;
-                    }
-
-                    if face_count >= 3 {
-                        da.total += face * 100;
-                        da.used_dice += 3;
-                    }
+                    regular_calc( face_count, face*100, 0, &mut da); 
                 }
             }
 
@@ -291,6 +243,13 @@ fn evaluate_dice(all_dice: &Vec<usize>) -> DiceAnalysis {
 
     da.five_count = face_counts[5];
     da.two_count = face_counts[2];
+
+    if TRACE_ON {
+        println!(
+            "total {} used {}",
+            da.total,
+            da.used_dice );
+    }
 
     return da;
 }
@@ -321,11 +280,28 @@ impl Player {
                 //
 
                 if (num_dice - da.used_dice) >= 3 {
-                    while da.total >= 100 && da.five_count > 0 && da.five_count < 3 {
+
+                    if da.total >=100 && ( da.five_count == 1 || da.five_count == 4 ) {
                         da.five_count -= 1;
                         da.used_dice -= 1;
                         da.total -= 50;
                     }
+                
+                    if da.total >= 100 && (da.five_count == 1 || da.five_count == 4 ){
+                        da.five_count -= 1;
+                        da.used_dice -= 1;
+                        da.total -= 50;
+                    }
+                }
+            }
+
+
+            if self.player_config.skip_twos > 0 {
+
+                if da.total > 200 && da.two_count >= 3 {
+                    da.two_count -= 3;
+                    da.used_dice -= 3;
+                    da.total -= 200;
                 }
             }
 
