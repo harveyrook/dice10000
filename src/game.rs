@@ -63,10 +63,12 @@ pub struct Dice10000 {
 
 pub fn build_game(config_file: &str) -> Dice10000 {
     let all_settings = load_settings(config_file);
-    let mut p: Vec<Player> = Vec::new();
-    for player_config in all_settings.players {
-        p.push(build_player(player_config));
-    }
+    //let mut p: Vec<Player> = Vec::new();
+    //for player_config in all_settings.players {
+    //    p.push(build_player(player_config));
+    //}
+
+    let p = all_settings.players.iter().map( |p| build_player(p)).collect();
 
     let d = Dice10000 {
         config: all_settings.config,
@@ -140,9 +142,9 @@ pub struct Player {
     life_time_wins: usize,
 }
 
-pub fn build_player(player_config_param: PlayerConfig) -> Player {
+pub fn build_player(player_config_param: &PlayerConfig) -> Player {
     Player {
-        player_config: Rc::new(player_config_param),
+        player_config: Rc::new(player_config_param.clone()),
         on_board: false,
         score: 0,
         life_time_wins: 0,
