@@ -1,48 +1,67 @@
 config:
    write_details: true 
    iterations: 1000000
+   calc_expected: false 
+   expected: 6 
+
 players:
  - id: 1
-   skip_fives: 0
-   skip_twos: 0
+   skip_fives: 1 
+   skip_twos: 0 
+   skip_ones: 0
    limits:
-      - 10000 
-      - 250
-      - 250
-      - 350
+      - 100 
+      - 50 
+      - 100 
+      - 500
       - 1000
       - 2000
-      - 2000
+      - 8000
  - id: 2 
-   skip_fives: 0
-   skip_twos: 1
+   skip_fives: 1
+   skip_twos: 0
+   skip_ones: 0
    limits:
-      - 10000
-      - 250
-      - 250 
+      - 100
+      - 50
+      - 100 
       - 350 
       - 1000
       - 2000
-      - 2000
+      - 8000
  - id: 3
    skip_fives: 1
    skip_twos: 0
+   skip_ones: 0
    limits:
-      - 10000
-      - 250
-      - 250
+      - 100
+      - 50
+      - 100
       - 350 
-      - 1500
+      - 1000
       - 2000
-      - 2000
+      - 8000
  - id: 4 
    skip_fives: 1
-   skip_twos: 1
+   skip_twos: 0 
+   skip_ones: 0 
    limits:
-      - 10000
-      - 250
-      - 250
-      - 350 
-      - 1500
+      - 100
+      - 50
+      - 100
+      - 350
+      - 1000
       - 2000
-      - 2000
+      - 8000
+
+        # - id: 5 
+        #   skip_fives: 1
+        #   skip_twos: 0 
+        #   limits:
+        # - 10000
+        #- 350
+        #- 300
+        #- 450 
+        #- 1500
+        #- 2500
+        #- 5000

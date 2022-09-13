@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 pub struct Settings {
     write_details: bool,
     iterations: usize,
+    calc_expected: bool,
+    expected: usize,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
@@ -16,6 +18,7 @@ pub struct PlayerConfig {
     id: usize,
     skip_fives: usize,
     skip_twos: usize,
+    skip_ones: usize,
     limits: [usize; 7],
 }
 
@@ -46,14 +49,10 @@ fn roll_dice(n: usize) -> Vec<usize> {
 
 fn print_dice(all_dice: &Vec<usize>) {
     for dice in all_dice {
-        if TRACE_ON {
             print!("{} ", *dice)
-        };
     }
 
-    if TRACE_ON {
         println!("")
-    };
 }
 
 pub struct Dice10000 {
@@ -63,10 +62,6 @@ pub struct Dice10000 {
 
 pub fn build_game(config_file: &str) -> Dice10000 {
     let all_settings = load_settings(config_file);
-    //let mut p: Vec<Player> = Vec::new();
-    //for player_config in all_settings.players {
-    //    p.push(build_player(player_config));
-    //}
 
     let p = all_settings.players.iter().map( |p| build_player(p)).collect();
 
@@ -81,24 +76,65 @@ pub fn build_game(config_file: &str) -> Dice10000 {
 impl Dice10000 {
     pub fn play_all_iterations(&mut self) {
 
-        for a in 0..self.config.iterations {
-            self.play((a+2) % self.player.len());
 
-            // Find the highest score
-            let score_winner = self.player.iter().
-                map( |p| p.score ).
-                max().
-                unwrap();
+        if self.config.calc_expected {
 
-            self.player = self.player.iter().map( |p| update_player( p, score_winner )).collect();
+            println!("Expected run...");
+            
+            let mut total: usize = 0;
+            let mut zero_count: f64 = 0.0;
+            let mut mega_count: f64 = 0.0;
+            for _ in 0..self.config.iterations {
+                
+                self.player[0].on_board = true;
+                let hand_count = self.player[0].play_hand(self.config.expected);
 
-        }
+                total += hand_count;
+                if hand_count == 0 {
+                    zero_count += 1.0;
+                }
+                if hand_count > 5000 {
+                    mega_count += 1.0;
+                }
 
-        for p in self.player.iter_mut() {
-            println!(
-                "Player {} won {} times",
-                p.player_config.id, p.life_time_wins
-            );
+
+                //println!("Total {}", hand_count);
+            }
+
+            let f_total = f64::from( self.config.iterations as u32 );
+            let average = total/self.config.iterations;
+            println!("Average for {} dice was {} with {}% busted hands. Megahands {}%", 
+                        self.config.expected, 
+                        average, 
+                        100.0 * zero_count/f_total,
+                        100.0 * mega_count/f_total); 
+
+
+        } else {
+        
+            for a in 0..self.config.iterations {
+                self.play((a+2) % self.player.len());
+
+                // Find the highest score
+                let score_winner = self.player.iter().
+                    map( |p| p.score ).
+                    max().
+                    unwrap();
+
+                self.player = self.player.iter().map( |p| update_player( p, score_winner )).collect();
+
+            }
+
+            for p in self.player.iter_mut() {
+                println!(
+                    "Player {} won {} times, skunked {} times, near {} times",
+                    p.player_config.id, 
+                    p.life_time_wins,
+                    p.life_time_skunks,
+                    p.life_time_near
+                );
+            }
+
         }
     }
 
@@ -113,7 +149,7 @@ impl Dice10000 {
                     continue;
                 }
 
-                p.play_hand();
+                p.play_hand(6);
                 if TRACE_ON {
                     println!("Player:{} score:{}", p.player_config.id, p.score);
                 }
@@ -140,6 +176,8 @@ pub struct Player {
     on_board: bool,
     score: usize,
     life_time_wins: usize,
+    life_time_skunks: usize,
+    life_time_near: usize,
 }
 
 pub fn build_player(player_config_param: &PlayerConfig) -> Player {
@@ -148,6 +186,8 @@ pub fn build_player(player_config_param: &PlayerConfig) -> Player {
         on_board: false,
         score: 0,
         life_time_wins: 0,
+        life_time_skunks: 0,
+        life_time_near: 0,
     }
 }
 
@@ -161,7 +201,19 @@ pub fn update_player( old_player: &Player, high_score: usize ) -> Player {
                             old_player.life_time_wins + 1
                         } else {
                             old_player.life_time_wins
-                        }
+                        },
+
+        life_time_skunks: if old_player.score < 8000 {
+                            old_player.life_time_skunks + 1
+                        } else {
+                            old_player.life_time_skunks
+                        },
+
+        life_time_near: if old_player.score != high_score && old_player.score > 10000 {
+                            old_player.life_time_near + 1
+                        } else {
+                            old_player.life_time_near
+                        },
     }        
 }
 
@@ -171,6 +223,7 @@ struct DiceAnalysis {
     used_dice: usize,
     five_count: usize,
     two_count: usize,
+    one_count: usize,
 }
 
 fn evaluate_dice(all_dice: &Vec<usize>) -> DiceAnalysis {
@@ -184,6 +237,7 @@ fn evaluate_dice(all_dice: &Vec<usize>) -> DiceAnalysis {
         used_dice: 0,
         five_count: 0,
         two_count: 0,
+        one_count: 0,
     };
 
     let face_counts = all_dice.iter().fold( [0; 7], | mut acc, x | { acc[*x] += 1; acc } );
@@ -245,6 +299,7 @@ fn evaluate_dice(all_dice: &Vec<usize>) -> DiceAnalysis {
 
     da.five_count = face_counts[5];
     da.two_count = face_counts[2];
+    da.one_count = face_counts[1];
 
     if TRACE_ON {
         println!(
@@ -258,15 +313,21 @@ fn evaluate_dice(all_dice: &Vec<usize>) -> DiceAnalysis {
 
 // This function keeps rolling dize until a zero is rolled
 impl Player {
-    fn play_hand(&mut self) -> usize {
+    fn play_hand(&mut self, start_dice: usize) -> usize {
         let mut run_total = 0;
-        let mut num_dice = 6;
+        let mut num_dice = start_dice;
         let mut _run_count = 0;
 
         loop {
             let dice = roll_dice(num_dice);
-            print_dice(&dice);
+            //print_dice(&dice);
             let mut da = evaluate_dice(&dice);
+
+            // de we go bust?
+            if da.total == 0 {
+                run_total = 0;
+                break;
+            }
 
             if self.player_config.skip_fives > 0 {
                 // We are testing the theory that its a good thing to have more dice to role. As such
@@ -281,15 +342,15 @@ impl Player {
                 //
                 //
 
-                if (num_dice - da.used_dice) >= 3 {
+                if (num_dice - da.used_dice) >= 2 {
 
-                    if da.total >=100 && ( da.five_count == 1 || da.five_count == 4 ) {
+                    if da.total >=100 && ( da.five_count == 1 || da.five_count == 2 || da.five_count == 4 ) {
                         da.five_count -= 1;
                         da.used_dice -= 1;
                         da.total -= 50;
                     }
                 
-                    if da.total >= 100 && (da.five_count == 1 || da.five_count == 4 ){
+                    if da.total >= 100 && (da.five_count == 1 || da.five_count == 2 || da.five_count == 4 ){
                         da.five_count -= 1;
                         da.used_dice -= 1;
                         da.total -= 50;
@@ -297,6 +358,15 @@ impl Player {
                 }
             }
 
+
+            if self.player_config.skip_ones > 0 {
+
+                if da.total >= 200 && da.one_count >= 2 {
+                    da.one_count -= 1;
+                    da.used_dice -= 1;
+                    da.total -= 100;
+                }
+            }
 
             if self.player_config.skip_twos > 0 {
 
@@ -312,23 +382,14 @@ impl Player {
 
             _run_count += 1;
 
-            // de we go bust?
-            if da.total == 0 {
-                run_total = 0;
-                break;
+            if num_dice == 0 {
+                num_dice = 6;
             }
-
-            // If we are rolled 3, 4 5 or 6 dice and two fives are returned then...
-            // pull 1 five out and roll with it, or...
-            // pull all fives out if we scored on something else
-            //if( num_dice > 2 && five_count == 2 && used_dice == 2 )
-            //{
-            //
-            //}
 
             if self.on_board {
                 let soft_limit = self.player_config.limits[num_dice]; 
                 if run_total >= soft_limit {
+                    // println!("Hit soft limit of {} per configured limit of {}", run_total, soft_limit);
                     break;
                 }
             } else {
@@ -336,10 +397,6 @@ impl Player {
                     self.on_board = true;
                     break;
                 }
-            }
-
-            if num_dice == 0 {
-                num_dice = 6;
             }
         }
 
