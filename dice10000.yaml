@@ -9,11 +9,12 @@ players:
    skip_fives: 1 
    skip_twos: 0 
    skip_ones: 0
+   aggressive_onboarding: true 
    limits:
       - 100 
       - 50 
       - 100 
-      - 500
+      - 400
       - 1000
       - 2000
       - 8000
@@ -21,11 +22,12 @@ players:
    skip_fives: 1
    skip_twos: 0
    skip_ones: 0
+   aggressive_onboarding: false
    limits:
       - 100
       - 50
       - 100 
-      - 350 
+      - 450 
       - 1000
       - 2000
       - 8000
@@ -33,6 +35,7 @@ players:
    skip_fives: 1
    skip_twos: 0
    skip_ones: 0
+   aggressive_onboarding: true 
    limits:
       - 100
       - 50
@@ -45,23 +48,13 @@ players:
    skip_fives: 1
    skip_twos: 0 
    skip_ones: 0 
+   aggressive_onboarding: false
    limits:
       - 100
       - 50
       - 100
-      - 350
+      - 500
       - 1000
       - 2000
       - 8000
 
-        # - id: 5 
-        #   skip_fives: 1
-        #   skip_twos: 0 
-        #   limits:
-        # - 10000
-        #- 350
-        #- 300
-        #- 450 
-        #- 1500
-        #- 2500
-        #- 5000

@@ -19,6 +19,7 @@ pub struct PlayerConfig {
     skip_fives: usize,
     skip_twos: usize,
     skip_ones: usize,
+    aggressive_onboarding: bool,
     limits: [usize; 7],
 }
 
@@ -28,7 +29,7 @@ pub struct AllSettings {
     players: Vec<PlayerConfig>,
 }
 
-static TRACE_ON: bool = false;
+static TRACE_ON: bool = false; 
 
 fn load_settings(config_file: &str) -> AllSettings {
     let file = File::open(config_file).unwrap();
@@ -301,13 +302,6 @@ fn evaluate_dice(all_dice: &Vec<usize>) -> DiceAnalysis {
     da.two_count = face_counts[2];
     da.one_count = face_counts[1];
 
-    if TRACE_ON {
-        println!(
-            "total {} used {}",
-            da.total,
-            da.used_dice );
-    }
-
     return da;
 }
 
@@ -380,6 +374,13 @@ impl Player {
             num_dice -= da.used_dice;
             run_total += da.total;
 
+            if TRACE_ON {
+                println!(
+                    "total {} used {}",
+                    da.total,
+                    da.used_dice );
+            }
+
             _run_count += 1;
 
             if num_dice == 0 {
@@ -393,17 +394,54 @@ impl Player {
                     break;
                 }
             } else {
-                if run_total >= 750 && num_dice > 0 {
-                    self.on_board = true;
-                    break;
+                if self.player_config.aggressive_onboarding && run_total >= 750 && num_dice < 4 {
+                    // aggressive on_boarding
+
+                        self.on_board = true;
+                        break;
+
+                } else {
+
+                    // nonaggressive onboarding-- break as soon as the score is greater than 750
+                    if run_total >= 750 && num_dice > 0 {
+                        self.on_board = true;
+                        break;
+                    }
+
                 }
+
             }
+
+
+
+           // if self.player_config.aggressive_onboarding == false 
+           //     && self.on_board == false 
+           //     && run_total >= 750 && num_dice > 0 {
+           //         self.on_board = true;
+           //         break;
+           // } else if self.on_board {
+           //     let soft_limit = self.player_config.limits[num_dice]; 
+           //     if run_total >= soft_limit {
+           //         // println!("Hit soft limit of {} per configured limit of {}", run_total, soft_limit);
+           //         break;
+           //     }
+           //  }
+
+
+
+
+
         }
 
         if TRACE_ON {
             println!("run total {} ", run_total);
         }
         self.score += run_total;
+
+        if run_total >= 750 {
+            self.on_board = true;
+        }
+
         run_total
     }
 }
