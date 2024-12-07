@@ -2,7 +2,6 @@ use rand::distributions::{Distribution, Uniform};
 use std::fs::File;
 use std::rc::Rc;
 
-
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -29,7 +28,7 @@ pub struct AllSettings {
     players: Vec<PlayerConfig>,
 }
 
-static TRACE_ON: bool = false; 
+static TRACE_ON: bool = false;
 
 fn load_settings(config_file: &str) -> AllSettings {
     let file = File::open(config_file).unwrap();
@@ -50,10 +49,10 @@ fn roll_dice(n: usize) -> Vec<usize> {
 
 fn print_dice(all_dice: &Vec<usize>) {
     for dice in all_dice {
-            print!("{} ", *dice)
+        print!("{} ", *dice)
     }
 
-        println!("")
+    println!("")
 }
 
 pub struct Dice10000 {
@@ -64,7 +63,11 @@ pub struct Dice10000 {
 pub fn build_game(config_file: &str) -> Dice10000 {
     let all_settings = load_settings(config_file);
 
-    let p = all_settings.players.iter().map( |p| build_player(p)).collect();
+    let p = all_settings
+        .players
+        .iter()
+        .map(|p| build_player(p))
+        .collect();
 
     let d = Dice10000 {
         config: all_settings.config,
@@ -76,17 +79,13 @@ pub fn build_game(config_file: &str) -> Dice10000 {
 
 impl Dice10000 {
     pub fn play_all_iterations(&mut self) {
-
-
         if self.config.calc_expected {
-
             println!("Expected run...");
-            
+
             let mut total: usize = 0;
             let mut zero_count: f64 = 0.0;
             let mut mega_count: f64 = 0.0;
             for _ in 0..self.config.iterations {
-                
                 self.player[0].on_board = true;
                 let hand_count = self.player[0].play_hand(self.config.expected);
 
@@ -98,46 +97,88 @@ impl Dice10000 {
                     mega_count += 1.0;
                 }
 
-
                 //println!("Total {}", hand_count);
             }
 
-            let f_total = f64::from( self.config.iterations as u32 );
-            let average = total/self.config.iterations;
-            println!("Average for {} dice was {} with {}% busted hands. Megahands {}%", 
-                        self.config.expected, 
-                        average, 
-                        100.0 * zero_count/f_total,
-                        100.0 * mega_count/f_total); 
-
-
+            let f_total = f64::from(self.config.iterations as u32);
+            let average = total / self.config.iterations;
+            println!(
+                "Average for {} dice was {} with {}% busted hands. Megahands {}%",
+                self.config.expected,
+                average,
+                100.0 * zero_count / f_total,
+                100.0 * mega_count / f_total
+            );
         } else {
-        
             for a in 0..self.config.iterations {
-                self.play((a+2) % self.player.len());
+                self.play((a + 2) % self.player.len());
 
                 // Find the highest score
-                let score_winner = self.player.iter().
-                    map( |p| p.score ).
-                    max().
-                    unwrap();
+                let score_winner = self.player.iter().map(|p| p.score).max().unwrap();
 
-                self.player = self.player.iter().map( |p| update_player( p, score_winner )).collect();
-
+                self.player = self
+                    .player
+                    .iter()
+                    .map(|p| update_player(p, score_winner))
+                    .collect();
             }
 
             for p in self.player.iter_mut() {
                 println!(
                     "Player {} won {} times, skunked {} times, near {} times",
-                    p.player_config.id, 
-                    p.life_time_wins,
-                    p.life_time_skunks,
-                    p.life_time_near
+                    p.player_config.id, p.life_time_wins, p.life_time_skunks, p.life_time_near
                 );
             }
-
         }
     }
+
+    pub fn play_millions(&mut self) {
+        let mut all_results: Vec<u32> = Vec::with_capacity(100000);
+
+        println!(
+            "S1 {} S2 {} S5 {} three dice limit {}", 
+            self.player[0].player_config.skip_ones,
+            self.player[0].player_config.skip_twos,
+            self.player[0].player_config.skip_fives,
+            self.player[0].player_config.limits[3] );
+
+        for _i in 1..=100000 {
+                all_results.push(self.play_to_10000());
+        }
+
+        all_results.sort();
+
+        println!(
+            "1% {} 10% {} 50% {} 90% {} 99% {}",
+            all_results[1000],
+            all_results[10000],
+            all_results[50000],
+            all_results[90000],
+            all_results[99000],
+        )
+
+    }
+
+
+    pub fn play_to_10000(&mut self) -> u32 {
+
+        let mut total: usize = 0;
+        let mut count_of_hands = 0;
+        
+        while total<10000 {
+            self.player[0].on_board = true;
+            count_of_hands+=1;
+            let hand_score = self.player[0].play_hand(self.config.expected);
+
+            total += hand_score;
+        }
+
+        //println!("It took {} hands to reach 10000", count_of_hands);
+
+        count_of_hands
+    }
+
+
 
     pub fn play(&mut self, mut starter: usize) {
         let mut keep_going = true;
@@ -192,32 +233,30 @@ pub fn build_player(player_config_param: &PlayerConfig) -> Player {
     }
 }
 
-pub fn update_player( old_player: &Player, high_score: usize ) -> Player {
-
+pub fn update_player(old_player: &Player, high_score: usize) -> Player {
     Player {
         player_config: old_player.player_config.clone(),
         on_board: false,
         score: 0,
         life_time_wins: if old_player.score == high_score {
-                            old_player.life_time_wins + 1
-                        } else {
-                            old_player.life_time_wins
-                        },
+            old_player.life_time_wins + 1
+        } else {
+            old_player.life_time_wins
+        },
 
         life_time_skunks: if old_player.score < 8000 {
-                            old_player.life_time_skunks + 1
-                        } else {
-                            old_player.life_time_skunks
-                        },
+            old_player.life_time_skunks + 1
+        } else {
+            old_player.life_time_skunks
+        },
 
         life_time_near: if old_player.score != high_score && old_player.score > 10000 {
-                            old_player.life_time_near + 1
-                        } else {
-                            old_player.life_time_near
-                        },
-    }        
+            old_player.life_time_near + 1
+        } else {
+            old_player.life_time_near
+        },
+    }
 }
-
 
 struct DiceAnalysis {
     total: usize,
@@ -241,8 +280,14 @@ fn evaluate_dice(all_dice: &Vec<usize>) -> DiceAnalysis {
         one_count: 0,
     };
 
-    let face_counts = all_dice.iter().fold( [0; 7], | mut acc, x | { acc[*x] += 1; acc } );
-    let type_count = (0..7).fold( [0; 7], | mut acc, x | { acc[face_counts[x]] += 1 ; acc } ); 
+    let face_counts = all_dice.iter().fold([0; 7], |mut acc, x| {
+        acc[*x] += 1;
+        acc
+    });
+    let type_count = (0..7).fold([0; 7], |mut acc, x| {
+        acc[face_counts[x]] += 1;
+        acc
+    });
 
     // Evaluations...
     // One of each... 1500
@@ -254,42 +299,41 @@ fn evaluate_dice(all_dice: &Vec<usize>) -> DiceAnalysis {
     if type_count[6] == 1 // six of a kind is 3 pairs
         || type_count[4] == 1 && type_count[2] == 1  // 4 of a kind and a pair is 3 pairs.
         || type_count[2] == 3 // 3 pairs
-        || type_count[6] == 1 // 1 of each face
+        || type_count[6] == 1
+    // 1 of each face
     {
         da.used_dice += 6;
         da.total = 1500;
     } else {
         for face in 1..7 {
-
             // print!("face_count {} face_counts {} total {} ", face_count, face_countss, total);
 
-            let regular_calc = | fcp, b, m, dr: & mut DiceAnalysis | {
+            let regular_calc = |fcp, b, m, dr: &mut DiceAnalysis| {
                 let mut fc = fcp;
 
-                if fc>=3 && b>0 {
+                if fc >= 3 && b > 0 {
                     dr.total += b;
                     fc -= 3;
                     dr.used_dice += 3;
                 }
 
-                if fc>0 && m>0{
-                    dr.total += m*fc;
+                if fc > 0 && m > 0 {
+                    dr.total += m * fc;
                     dr.used_dice += fc;
                     //fc = 0;
                 }
-
             };
 
             let face_count = face_counts[face];
             match face {
                 1 => {
-                    regular_calc( face_count, 1000, 100, &mut da);
+                    regular_calc(face_count, 1000, 100, &mut da);
                 }
                 5 => {
-                    regular_calc( face_count, 500, 50, &mut da);
+                    regular_calc(face_count, 500, 50, &mut da);
                 }
                 _ => {
-                    regular_calc( face_count, face*100, 0, &mut da); 
+                    regular_calc(face_count, face * 100, 0, &mut da);
                 }
             }
 
@@ -337,14 +381,17 @@ impl Player {
                 //
 
                 if (num_dice - da.used_dice) >= 2 {
-
-                    if da.total >=100 && ( da.five_count == 1 || da.five_count == 2 || da.five_count == 4 ) {
+                    if da.total >= 100
+                        && (da.five_count == 1 || da.five_count == 2 || da.five_count == 4)
+                    {
                         da.five_count -= 1;
                         da.used_dice -= 1;
                         da.total -= 50;
                     }
-                
-                    if da.total >= 100 && (da.five_count == 1 || da.five_count == 2 || da.five_count == 4 ){
+
+                    if da.total >= 100
+                        && (da.five_count == 1 || da.five_count == 2 || da.five_count == 4)
+                    {
                         da.five_count -= 1;
                         da.used_dice -= 1;
                         da.total -= 50;
@@ -352,9 +399,7 @@ impl Player {
                 }
             }
 
-
             if self.player_config.skip_ones > 0 {
-
                 if da.total >= 200 && da.one_count >= 2 {
                     da.one_count -= 1;
                     da.used_dice -= 1;
@@ -363,7 +408,6 @@ impl Player {
             }
 
             if self.player_config.skip_twos > 0 {
-
                 if da.total > 200 && da.two_count >= 3 {
                     da.two_count -= 3;
                     da.used_dice -= 3;
@@ -375,10 +419,7 @@ impl Player {
             run_total += da.total;
 
             if TRACE_ON {
-                println!(
-                    "total {} used {}",
-                    da.total,
-                    da.used_dice );
+                println!("total {} used {}", da.total, da.used_dice);
             }
 
             _run_count += 1;
@@ -388,7 +429,7 @@ impl Player {
             }
 
             if self.on_board {
-                let soft_limit = self.player_config.limits[num_dice]; 
+                let soft_limit = self.player_config.limits[num_dice];
                 if run_total >= soft_limit {
                     // println!("Hit soft limit of {} per configured limit of {}", run_total, soft_limit);
                     break;
@@ -397,40 +438,29 @@ impl Player {
                 if self.player_config.aggressive_onboarding && run_total >= 750 && num_dice < 4 {
                     // aggressive on_boarding
 
-                        self.on_board = true;
-                        break;
-
+                    self.on_board = true;
+                    break;
                 } else {
-
                     // nonaggressive onboarding-- break as soon as the score is greater than 750
                     if run_total >= 750 && num_dice > 0 {
                         self.on_board = true;
                         break;
                     }
-
                 }
-
             }
 
-
-
-           // if self.player_config.aggressive_onboarding == false 
-           //     && self.on_board == false 
-           //     && run_total >= 750 && num_dice > 0 {
-           //         self.on_board = true;
-           //         break;
-           // } else if self.on_board {
-           //     let soft_limit = self.player_config.limits[num_dice]; 
-           //     if run_total >= soft_limit {
-           //         // println!("Hit soft limit of {} per configured limit of {}", run_total, soft_limit);
-           //         break;
-           //     }
-           //  }
-
-
-
-
-
+            // if self.player_config.aggressive_onboarding == false
+            //     && self.on_board == false
+            //     && run_total >= 750 && num_dice > 0 {
+            //         self.on_board = true;
+            //         break;
+            // } else if self.on_board {
+            //     let soft_limit = self.player_config.limits[num_dice];
+            //     if run_total >= soft_limit {
+            //         // println!("Hit soft limit of {} per configured limit of {}", run_total, soft_limit);
+            //         break;
+            //     }
+            //  }
         }
 
         if TRACE_ON {
